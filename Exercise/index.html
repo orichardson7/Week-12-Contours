@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Geospatial Exercise</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.css" />
+    <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script src="https://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+
+
+    <style>
+        .legend_text {
+            font-family: sans-serif;
+            font-size: 5pt;
+        }
+
+        .slider {
+            margin: 0 auto;
+            width: 75%;
+        }
+
+        .text {
+            padding-left: 12.5%;
+        }
+    </style>
+
+</head>
+
+<body>
+    <h5>Geospatial Exercise - Owen Richardson </h5>
+    <svg width="100vw" height="70vh" viewbox="0 0 512 512"></svg>
+    <div id="threshold_slider_div" class="slider">
+        <label for="threshold_slider">Threshold:</label>
+        <input type="range" name="threshold_slider" id="threshold_slider" data-highlight="true" min="10" max="500" value="100">
+    </div>
+    <div data-role="rangeslider" id="temperature_slider_div" class="slider">
+        <label for="range-min" class="text">Temp Range:</label>
+        <input type="range" name="range-min" id="range-min" min="0" max="3000" value="0">
+        <input type="range" name="range-max" id="range-max" min="0" max="3000" value="3000">
+    </div>
+
+    <script>
+        const FILENAME = "data/Data_CT.csv"; // data file
+        let svg = d3.select("svg");
+
+        // set initial min max and threshold values
+        let min = 0;
+        let max = 3000;
+        let threshold = 100
+        
+        // generator
+        const path = d3.geoPath();
+
+        //Control event handlers
+        $("#threshold_slider_div").on("change", function () {
+            var value = $("#threshold_slider").val()
+            threshold = value
+            plot_contour(FILENAME)
+        });
+
+        $('#temperature_slider_div').on("change", function () {
+            var value_a = $("#range-min").val()
+            var value_b = $("#range-max").val()
+            min = value_a
+            max = value_b
+            plot_contour(FILENAME)
+        });
+
+        function plot_contour(fileName) {
+            //Read csv file
+            d3.csv(fileName).then(function (data) {
+                // data dimensions
+                let m = 512, n = 512;
+
+                // Convert data into 1D list
+                let values = [];
+                data.forEach(function (d) {
+                    values.push(+d[0])
+                });
+
+                /////////////////COLOR CODING/////////////////////////////
+                let colors = d3.scaleLinear()
+                    .domain(d3.range(min, max,
+                        parseInt(Math.abs(max - min) / 7)))
+                    .range(["#0d1a50", "#3e5eba", "#2b83ba",
+                        "#abdda4", "#ffffbf", "#fdae61", "#d7191c"])
+                    .interpolate(d3.interpolateHcl);
+
+                ////////////////////////////////////////////////////////////
+
+                // Step 3 contour generator
+                let contours = d3.contours()
+                    .size([m, n])
+                    .thresholds(d3.range(min, max, threshold))
+                    (values);
+
+                // Step 3 append contour to path (d)
+                svg.append("g").attr("class", "contours")
+                    .selectAll("path")
+                    .data(contours)
+                    .enter()
+                    .append("path")
+                    .attr("d", function (d) { return path(d) })
+                    .attr("stroke", "black")
+                    .attr("stroke-width", ".1px")
+                    .attr("stroke-linejoin", "round")
+                    .attr("fill",
+                        function (d) {
+                            return colors(d.value)
+                        })
+            })
+        }
+
+        // First call to init image
+        plot_contour(FILENAME)
+
+    </script>
+
+</body>
+
+</html>
